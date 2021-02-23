@@ -1,6 +1,6 @@
 const _ = require("lodash");
 const path = require("path");
-console.log(__dirname);
+
 const arrayManipulation = (array, option) => {
   if (_.isArray(array)) {
     switch (option) {

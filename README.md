@@ -24,22 +24,139 @@ A package for parsing result of timestream query and also for generating energy 
 
 2. _keyValueTransformation(response)_
 
-   Converts timestream query response(string array) to an array of json objects with columns as keys and each object representing a row. It takes the following parameters:
+   Converts timestream query response(string array as obtained from parseQueryResultWithProcessing) to an array of json objects with columns as keys and each object representing a row of table. It takes the following parameters:
 
-   - response: timestream query response(string array).
+   - response: output from parseQueryResultWithProcessing() function(string array).
 
-   Example:
+   **Example:**
 
    ```
    const { keyValueTransformation } = require("timestream-processing");
 
-   let response = ['{id=8910dh1937a73bf82,name=Raj Malhotra,age=25,Gender=M}','{id=738hf3y837932h37r,name=Mehul Bhanushali,age=28,Gender=M}'];
+   let response = ['{id=8910dh1937a73bf82,name=Raj Malhotra,age=25,Gender=M,time=2021-02-22 23:06:03.312000000}','{id=738hf3y837932h37r,name=Mehul Bhanushali,age=28,Gender=M,time=2021-02-22 23:07:03.312000000}'];
    let result = keyValueTransformation(response);
    console.log(result);
    ```
 
-   **Output**
+   **Output:**
 
-   [{id:'8910dh1937a73bf82', name: 'Raj Malhotra', age: '25', Gender: 'M'},{id: '738hf3y837932h37r', name: 'Mehul Bhanushali', age: '28', Gender: 'M'}]
+   [{id:'8910dh1937a73bf82', name: 'Raj Malhotra', age: '25', Gender: 'M',time: 2021-02-22 23:06:03.312000000},{id: '738hf3y837932h37r', name: 'Mehul Bhanushali', age: '28', Gender: 'M', time: '2021-02-22 23:07:03.312000000'}]
 
-3.
+3. _parseQueryResult(response)_
+
+   Converts a timestream query response object to key value pairs. This function operates directly on the timestream read query response object whereas keyValueTransformation() function operates on string array.It takes the following parameters:
+
+   - response: timestream query response(object)
+
+   **Example:**
+
+   ```
+   const { parseQueryResult } = require("timestream-processing");
+
+   let response =
+   {
+       QueryId: 'AEBQEAM2Q2GTYF2ZDVAGKALO7UXVDHQ4VU4XGGZ4233NITK7LWOXZ4GUBGRIVUK',
+       Rows:[
+        {Data:
+        [
+            { ScalarValue: '8910dh1937a73bf82' },
+            { ScalarValue: 'Raj Malhotra' },
+            { ScalarValue: '25' },
+            { ScalarValue: 'M' },
+            {ScalarValue: '2021-02-22 23:06:03.312000000'}
+       ]}
+       {Data:
+       [
+            { ScalarValue: '738hf3y837932h37r' },
+            { ScalarValue: 'Mehul Bhanushali' },
+            { ScalarValue: '28' },
+            { ScalarValue: 'M' }
+            {ScalarValue: '2021-02-22 23:07:03.312000000'}
+       ]}
+       ],
+        ColumnInfo:
+        [
+            { Name: 'id', Type: { ScalarType: 'VARCHAR' } },
+            { Name: 'name', Type: { ScalarType: 'VARCHAR' } },
+            { Name: 'age', Type: { ScalarType: 'VARCHAR' } },
+            { Name: 'Gender', Type: { ScalarType: 'VARCHAR' } },
+            { Name: 'time', Type: { ScalarType: 'TIMESTAMP' } }
+        ],
+         QueryStatus:
+         {
+            ProgressPercentage: 100,
+            CumulativeBytesScanned: 8464866,
+            CumulativeBytesMetered: 10000000
+        }
+    };
+
+    let result = parseQueryResult(response);
+    console.log(result);
+   ```
+
+   **Output:**
+
+   [{id:'8910dh1937a73bf82', name: 'Raj Malhotra', age: '25', Gender: 'M',time: 2021-02-22 23:06:03.312000000},{id: '738hf3y837932h37r', name: 'Mehul Bhanushali', age: '28', Gender: 'M', time: '2021-02-22 23:07:03.312000000'}]
+
+4. _parseQueryResultWithProcessing(response)_
+
+   Converts a timestream query response object to a string array. Each string of the array represents a row of timestream table.It takes the following parameters:
+
+   - response: timestream query response(object)
+
+   **Example:**
+
+   ```
+   const { parseQueryResultWithProcessing } = require("timestream-processing");
+
+   let response =
+   {
+      QueryId: 'AEBQEAM2Q2GTYF2ZDVAGKALO7UXVDHQ4VU4XGGZ4233NITK7LWOXZ4GUBGRIVUK',
+      Rows:[
+       {Data:
+       [
+           { ScalarValue: '8910dh1937a73bf82' },
+           { ScalarValue: 'Raj Malhotra' },
+           { ScalarValue: '25' },
+           { ScalarValue: 'M' },
+           {ScalarValue: '2021-02-22 23:06:03.312000000'}
+      ]}
+      {Data:
+      [
+           { ScalarValue: '738hf3y837932h37r' },
+           { ScalarValue: 'Mehul Bhanushali' },
+           { ScalarValue: '28' },
+           { ScalarValue: 'M' }
+           {ScalarValue: '2021-02-22 23:07:03.312000000'}
+      ]}
+      ],
+       ColumnInfo:
+       [
+           { Name: 'id', Type: { ScalarType: 'VARCHAR' } },
+           { Name: 'name', Type: { ScalarType: 'VARCHAR' } },
+           { Name: 'age', Type: { ScalarType: 'VARCHAR' } },
+           { Name: 'Gender', Type: { ScalarType: 'VARCHAR' } },
+           { Name: 'time', Type: { ScalarType: 'TIMESTAMP' } }
+       ],
+        QueryStatus:
+        {
+           ProgressPercentage: 100,
+           CumulativeBytesScanned: 8464866,
+           CumulativeBytesMetered: 10000000
+       }
+   };
+
+   let result = parseQueryResultWithProcessing(response);
+   console.log(result);
+   ```
+
+   **Output:**
+
+   ['{id=8910dh1937a73bf82,name=Raj Malhotra,age=25,Gender=M,time=2021-02-22 23:06:03.312000000}','{id=738hf3y837932h37r,name=Mehul Bhanushali,age=28,Gender=M,time=2021-02-22 23:07:03.312000000}']
+
+5. _getParsedValue_(value,dataType):
+
+   Converts timestream query response object value(each object from array of objects output from parseQueryResult) to its corresponding data type based on the 'dataType' parameter of response.It takes the following parameters:
+
+   - value: value of parameter
+   - dataType: data type of parameter

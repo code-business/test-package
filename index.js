@@ -41,7 +41,7 @@ const normalReport = async (AWS, mongo_url, db_name, body) => {
   const findObject = {
     page: 1,
     limit: 10,
-    fields: { parameters: 0 },
+    fields: { name: 1 },
     filter: { _id: { $in: devIds } },
     sort: {
       _id: -1,
@@ -62,7 +62,7 @@ const normalReport = async (AWS, mongo_url, db_name, body) => {
   if (start && end) {
     const diff = moment.duration(end.diff(start));
     const days = diff.asDays();
-    if (days < 1) {
+    if (days <= 1) {
       if (deviceIds_string.length == 1) {
         query = `SELECT * FROM "selecDev"."DevicesData" where deviceId IN (${deviceIds_string.join(
           ","
@@ -84,7 +84,7 @@ const normalReport = async (AWS, mongo_url, db_name, body) => {
           "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
         )}' ORDER BY ${body.sort}`;
       }
-    } else if (days >= 1 && days < 15) {
+    } else if (days > 1 && days < 15) {
       query = `SELECT * FROM "selecDev"."DevicesData" where deviceId IN (${deviceIds_string.join(
         ","
       )}) and measure_name IN (${measure_names_string.join(
@@ -123,7 +123,7 @@ const normalReport = async (AWS, mongo_url, db_name, body) => {
   res = keyValueTransformation(res);
 
   // grouping according to time
-  res = _.chain(res)
+  res_final = _.chain(res)
     .groupBy("time")
     .map((v, i) => {
       return {
@@ -141,15 +141,17 @@ const normalReport = async (AWS, mongo_url, db_name, body) => {
     })
     .value();
 
-  return res;
+  return { ts_response: res, final: res_final };
 };
 const findDevice = async (findObject, mongo_url, db_name) => {
   const skip = findObject.page * findObject.limit - findObject.limit;
 
   const db = await connectToDatabase(mongo_url, db_name);
+
   const data = await db
     .collection("devices")
-    .find(findObject.filter, findObject.fields)
+    .find(findObject.filter)
+    .project(findObject.fields)
     .sort(findObject.sort)
     .skip(skip)
     .limit(findObject.limit)
@@ -205,7 +207,7 @@ const energyReport = async (AWS, mongo_url, db_name, body) => {
   const findObject = {
     page: 1,
     limit: 10,
-    fields: { parameters: 0 },
+    fields: { name: 1 },
     filter: { _id: { $in: devIds } },
     sort: {
       _id: -1,
@@ -235,7 +237,11 @@ const energyReport = async (AWS, mongo_url, db_name, body) => {
 
   let main_response = await readRecords(AWS, main_query, null, []);
   main_response = keyValueTransformation(main_response);
-  main_response = groupByTime(main_response, deviceDictionary, groupBy);
+  let main_response_final = groupByTime(
+    main_response,
+    deviceDictionary,
+    groupBy
+  );
   let responseForPastData = {};
   await Promise.all(
     body.devices.map(async (device) => {
@@ -260,7 +266,7 @@ const energyReport = async (AWS, mongo_url, db_name, body) => {
 
   const deviceIds = body.devices.map((d) => d.deviceId);
 
-  main_response = main_response.map((groupData, index) => {
+  main_response_final = main_response_final.map((groupData, index) => {
     // filter keys and sort them based on frontend requirement
     const groupDataKeys = Object.keys(groupData)
       .filter(
@@ -286,7 +292,7 @@ const energyReport = async (AWS, mongo_url, db_name, body) => {
           const max = _.get(groupData, `${measureNameKey}-max`) * 1;
           let min = 0;
           //check if the current index is last index(oldest time group)
-          if (index === main_response.length - 1) {
+          if (index === main_response_final.length - 1) {
             //get max energy of data before start time to be used as min energy for oldest time group
             min = getPastMaxEnergy(
               groupData,
@@ -296,7 +302,11 @@ const energyReport = async (AWS, mongo_url, db_name, body) => {
             );
           } else {
             min =
-              _.get(main_response, `${index + 1}.${measureNameKey}-max`) * 1;
+              _.get(
+                main_response_final,
+                `${index + 1}.${measureNameKey}-max`,
+                _.get(groupData, `${measureNameKey}-min`)
+              ) * 1;
           }
           calculatedGroupData[measureNameKey] = (max - min).toFixed(2);
         }
@@ -306,7 +316,11 @@ const energyReport = async (AWS, mongo_url, db_name, body) => {
     return calculatedGroupData;
   });
 
-  return main_response;
+  return {
+    ts_response: main_response,
+    final: main_response_final,
+    pastData: responseForPastData,
+  };
 };
 
 const keyValueTransformation = (response) => {

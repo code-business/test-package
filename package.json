@@ -8,15 +8,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/code-business/test-package.git"
+    "url": "git+https://github.com/code-business/timestream-processing.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/code-business/test-package/issues"
+    "url": "https://github.com/code-business/timestream-processing/issues"
   },
-  "homepage": "https://github.com/code-business/test-package#readme",
+  "homepage": "https://github.com/code-business/timestream-processing#readme",
   "dependencies": {
     "aws-sdk": "^2.784.0",
     "lodash": "^4.17.21",

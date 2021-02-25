@@ -123,7 +123,7 @@ const normalReport = async (AWS, mongo_url, db_name, body) => {
   res = keyValueTransformation(res);
 
   // grouping according to time
-  res_final = _.chain(res)
+  let res_final = _.chain(res)
     .groupBy("time")
     .map((v, i) => {
       return {

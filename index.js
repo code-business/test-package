@@ -1,270 +1,18 @@
 const _ = require("lodash");
 const moment = require("moment");
 
-const { connectToDatabase } = require("./dbconnect");
-const { ObjectID } = require("mongodb");
-
-const normalReport = async (AWS, mongo_url, db_name, body) => {
-  let flag = 0;
-  body.devices.every((device) => {
-    let params = device["measure_name"];
-    if (params.length === 0) {
-      flag++;
-      return false;
-    } else {
-      params.every((param) => {
-        if (param.length === 0) {
-          flag++;
-          return false;
-        } else {
-          return true;
-        }
-      });
-      return true;
-    }
-  });
-
-  if (flag !== 0) {
-    throw new Error("Parameters of any device cannot be empty");
-  }
-
-  AWS.config.update({
-    region: "us-east-1",
-  });
-
-  let deviceIds_string = body.devices.map((d) => `'${d.deviceId}'`);
-  let measure_names = _.flattenDeep(body.devices.map((d) => d.measure_name));
-  measure_names_string = measure_names.map((m) => `'${m}'`);
-  measure_names_string = _.uniq(measure_names_string);
-
-  const devIds = body.devices.map((d) => new ObjectID(d.deviceId));
-  const findObject = {
-    page: 1,
-    limit: 10,
-    fields: { name: 1 },
-    filter: { _id: { $in: devIds } },
-    sort: {
-      _id: -1,
-    },
-  };
-
-  const data = await findDevice(findObject, mongo_url, db_name);
-
-  if (data.length < 1) {
-    throw new Error("device not found");
-  }
-
-  const deviceDictionary = _.keyBy(data, "_id");
-
-  const start = moment(body.startDate);
-  const end = moment(body.endDate);
-
-  if (start && end) {
-    const diff = moment.duration(end.diff(start));
-    const days = diff.asDays();
-    if (days <= 1) {
-      if (deviceIds_string.length == 1) {
-        query = `SELECT * FROM "selecDev"."DevicesData" where deviceId IN (${deviceIds_string.join(
-          ","
-        )}) and measure_name IN (${measure_names_string.join(
-          ","
-        )}) and time <= '${moment(body.endDate).format(
-          "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-        )}' and time >= '${moment(body.startDate).format(
-          "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-        )}' ORDER BY ${body.sort}`;
-      } else {
-        query = `SELECT * FROM "selecDev"."DevicesData" where deviceId IN (${deviceIds_string.join(
-          ","
-        )}) and measure_name IN (${measure_names_string.join(
-          ","
-        )}) and FM = 'true' and time <= '${moment(body.endDate).format(
-          "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-        )}' and time >= '${moment(body.startDate).format(
-          "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-        )}' ORDER BY ${body.sort}`;
-      }
-    } else if (days > 1 && days < 15) {
-      query = `SELECT * FROM "selecDev"."DevicesData" where deviceId IN (${deviceIds_string.join(
-        ","
-      )}) and measure_name IN (${measure_names_string.join(
-        ","
-      )}) and H = 'true' and time <='${moment(body.endDate).format(
-        "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-      )}' and time >= '${moment(body.startDate).format(
-        "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-      )}' ORDER BY ${body.sort}`;
-    } else {
-      query = `SELECT * FROM "selecDev"."DevicesData" where deviceId IN (${deviceIds_string.join(
-        ","
-      )}) and measure_name IN (${measure_names_string.join(
-        ","
-      )}) and D = 'true' and time <= '${moment(body.endDate).format(
-        "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-      )}' and time >= '${moment(body.startDate).format(
-        "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-      )}' ORDER BY ${body.sort}`;
-    }
-  } else if (body.lastRecordLength) {
-    query = `SELECT * FROM "selecDev"."DevicesData" where deviceId IN (${deviceIds_string.join(
-      ","
-    )}) and measure_name IN (${measure_names_string.join(",")}) ORDER BY ${
-      body.sort
-    } LIMIT ${body.lastRecordLength}`;
-  } else if (body.ago) {
-    query = `SELECT * FROM "selecDev"."DevicesData" where deviceId IN (${deviceIds_string.join(
-      ","
-    )}) and measure_name IN (${measure_names_string.join(
-      ","
-    )}) and time >= ago(${body.ago}) ORDER BY ${body.sort}`;
-  }
-  let res = await readRecords(AWS, query, null, []);
-
-  res = keyValueTransformation(res);
-
-  // grouping according to time
-  let res_final = _.chain(res)
-    .groupBy("time")
-    .map((v, i) => {
-      return {
-        time: i,
-        ...v.reduce((acc, current) => {
-          acc[
-            `${deviceDictionary[current.deviceId].name}-${current.measure_name}`
-          ] = getParsedValue(
-            current["measure_value::double"],
-            current["dataType"]
-          );
-          return acc;
-        }, {}),
-      };
-    })
-    .value();
-
-  return { ts_response: res, final: res_final };
-};
-const findDevice = async (findObject, mongo_url, db_name) => {
-  const skip = findObject.page * findObject.limit - findObject.limit;
-
-  const db = await connectToDatabase(mongo_url, db_name);
-
-  const data = await db
-    .collection("devices")
-    .find(findObject.filter)
-    .project(findObject.fields)
-    .sort(findObject.sort)
-    .skip(skip)
-    .limit(findObject.limit)
-    .toArray();
-
-  return data;
-};
-
-const energyReport = async (AWS, mongo_url, db_name, body) => {
-  let flag = 0;
-  body.devices.every((device) => {
-    let params = device["measure_name"];
-    if (params.length === 0) {
-      flag++;
-      return false;
-    } else {
-      params.every((param) => {
-        if (param.length === 0) {
-          flag++;
-          return false;
-        } else {
-          return true;
-        }
-      });
-      return true;
-    }
-  });
-
-  if (flag !== 0) {
-    throw new Error("Parameters of any device cannot be empty");
-  }
-  AWS.config.update({
-    region: "us-east-1",
-  });
-
-  let deviceIds_string = body.devices.map((d) => `'${d.deviceId}'`);
-  let measure_names = _.flattenDeep(body.devices.map((d) => d.measure_name));
-  measure_names_string = measure_names.map((m) => `'${m}'`);
-  measure_names_string = _.uniq(measure_names_string);
-  let groupBy;
-  if (body.groupBy === "hour") {
-    groupBy = "Hr";
-  } else if (body.groupBy === "day") {
-    groupBy = "Dy";
-  } else if (body.groupBy === "month") {
-    groupBy = "MM";
-  } else {
-    groupBy = "Yr";
-  }
-
-  const devIds = body.devices.map((d) => new ObjectID(d.deviceId));
-
-  const findObject = {
-    page: 1,
-    limit: 10,
-    fields: { name: 1 },
-    filter: { _id: { $in: devIds } },
-    sort: {
-      _id: -1,
-    },
-  };
-
-  const data = await findDevice(findObject, mongo_url, db_name);
-
-  if (data.length < 1) {
-    throw new Error("device not found");
-  }
-
-  const deviceDictionary = _.keyBy(data, "_id");
-
-  //query to fetch timestream data based on request parameters
-  const main_query = `SELECT deviceId,measure_name, ${groupBy}, MAX(measure_value::double) AS max, MIN(measure_value::double) AS min FROM "selecDev"."DevicesData" where deviceId IN (${deviceIds_string.join(
-    ","
-  )}) and measure_name IN (${measure_names_string.join(
-    ","
-  )}) and time <= '${moment(body.endDate).format(
-    "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-  )}' and time >= '${moment(body.startDate).format(
-    "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-  )}' ${""} GROUP BY deviceId,${groupBy}, measure_name ORDER BY ${groupBy} ${
-    body.sort
-  }`;
-
-  let main_response = await readRecords(AWS, main_query, null, []);
-  main_response = keyValueTransformation(main_response);
+const generateEnergyReport = async (
+  deviceIds,
+  responseForPastData,
+  main_response,
+  deviceDictionary,
+  groupBy
+) => {
   let main_response_final = groupByTime(
     main_response,
     deviceDictionary,
     groupBy
   );
-  let responseForPastData = {};
-  await Promise.all(
-    body.devices.map(async (device) => {
-      device["measure_name"] = device["measure_name"].map(
-        (measure) => `'${measure}'`
-      );
-      const queryForPastData = `SELECT deviceId,measure_name,time,measure_value::double FROM "selecDev"."DevicesData" where deviceId = '${
-        device.deviceId
-      }' and measure_name IN (${device["measure_name"].join(
-        ","
-      )}) and time < '${moment(body.startDate).format(
-        "yyyy-MM-DD HH:mm:ss.SSSSSSSSS"
-      )}' ORDER BY time ${body.sort} LIMIT ${device["measure_name"].length}`;
-
-      let r = await readRecords(AWS, queryForPastData, null, []);
-
-      //transform to key value pairs
-      r = keyValueTransformation(r);
-      responseForPastData[device.deviceId] = r;
-    })
-  );
-
-  const deviceIds = body.devices.map((d) => d.deviceId);
 
   main_response_final = main_response_final.map((groupData, index) => {
     // filter keys and sort them based on frontend requirement
@@ -316,63 +64,7 @@ const energyReport = async (AWS, mongo_url, db_name, body) => {
     return calculatedGroupData;
   });
 
-  return {
-    ts_response: main_response,
-    final: main_response_final,
-    pastData: responseForPastData,
-  };
-};
-
-const keyValueTransformation = (response) => {
-  response = response.map((data) => {
-    data = data.substring(1, data.length - 1);
-    let temp = data.split(",").reduce((acc, current) => {
-      const keyValue = current.split("=");
-      if (keyValue.length === 2) {
-        if (keyValue[0].trim() == "time") {
-          // to group by using time
-          acc[keyValue[0].trim()] = moment(keyValue[1].trim())
-            .utcOffset("+0530")
-            .format("YYYY-MM-DD HH:mm:ss");
-        } else {
-          acc[keyValue[0].trim()] = keyValue[1].trim();
-        }
-      }
-      return acc;
-    }, {});
-    return temp;
-  });
-  return response;
-};
-
-const getParsedValue = (value, type) => {
-  let parsedValue;
-  switch (type) {
-    case "BOOL":
-    case "FLOAT":
-      parsedValue = parseFloat(value);
-      break;
-    case "DATE":
-      parsedValue = moment(parseFloat(value)).format("YYYY-MM-DD");
-      break;
-    case "TOD":
-      parsedValue = moment(parseInt(value) * 1000)
-        .utc()
-        .format("HH:mm:ss");
-      break;
-    case "TIME":
-      parsedValue = moment(parseInt(value) / 1000)
-        .utc()
-        .format("HH:mm:ss");
-      break;
-    case "INT":
-    case "UINT":
-    case "USINT":
-    case "UDINT_R":
-      parsedValue = parseInt(value);
-      break;
-  }
-  return parsedValue;
+  return main_response_final;
 };
 
 const groupByTime = (response, deviceDictionary, groupBy) => {
@@ -431,27 +123,44 @@ const getPastMaxEnergy = (
   return min;
 };
 
-const readRecords = async (AWS, query, nextToken, arr) => {
-  const queryClient = new AWS.TimestreamQuery();
-
-  const params = {
-    QueryString: query,
-  };
-
-  if (nextToken) {
-    params.NextToken = `${nextToken}`;
-  }
-  const resp = await queryClient.query(params).promise();
-
-  arr = [...arr, resp];
-
-  if (resp.NextToken) {
-    return await readRecords(query, resp.NextToken, arr);
-  } else {
-    return parseQueryResult(resp);
-  }
+const keyValueTransformation = (response) => {
+  response = response.map((data) => {
+    data = data.substring(1, data.length - 1);
+    let temp = data.split(",").reduce((acc, current) => {
+      const keyValue = current.split("=");
+      if (keyValue.length === 2) {
+        if (keyValue[0].trim() == "time") {
+          // to group by using time
+          acc[keyValue[0].trim()] = moment(keyValue[1].trim())
+            .utcOffset("+0530")
+            .format("YYYY-MM-DD HH:mm:ss");
+        } else {
+          acc[keyValue[0].trim()] = keyValue[1].trim();
+        }
+      }
+      return acc;
+    }, {});
+    return temp;
+  });
+  return response;
 };
+
 const parseQueryResult = (response) => {
+  let result = [];
+  result = response.Rows.map((row) => {
+    let rowObj = {};
+    let i;
+    for (i = 0; i < row.Data.length; i++) {
+      rowObj[response.ColumnInfo[i].Name] = row.Data[i].ScalarValue;
+    }
+
+    return rowObj;
+  });
+
+  return result;
+};
+
+const parseQueryResultWithProcessing = (response) => {
   const columnInfo = response.ColumnInfo;
   const rows = response.Rows;
 
@@ -529,4 +238,40 @@ const parseArray = (arrayColumnInfo, arrayValues) => {
   return `[${arrayOutput.join(", ")}]`;
 };
 
-module.exports = { normalReport, energyReport };
+const getParsedValue = (value, type) => {
+  let parsedValue;
+  switch (type) {
+    case "BOOL":
+    case "FLOAT":
+      parsedValue = parseFloat(value);
+      break;
+    case "DATE":
+      parsedValue = moment(parseFloat(value)).format("YYYY-MM-DD");
+      break;
+    case "TOD":
+      parsedValue = moment(parseInt(value) * 1000)
+        .utc()
+        .format("HH:mm:ss");
+      break;
+    case "TIME":
+      parsedValue = moment(parseInt(value) / 1000)
+        .utc()
+        .format("HH:mm:ss");
+      break;
+    case "INT":
+    case "UINT":
+    case "USINT":
+    case "UDINT_R":
+      parsedValue = parseInt(value);
+      break;
+  }
+  return parsedValue;
+};
+
+module.exports = {
+  generateEnergyReport,
+  keyValueTransformation,
+  parseQueryResultWithProcessing,
+  parseQueryResult,
+  getParsedValue,
+};

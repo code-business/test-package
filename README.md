@@ -2,7 +2,7 @@
 
 A package for parsing result of timestream query and also for generating energy report.
 
-**timestream-processing APIS**
+**timestream-processing APIs**
 
 1. _generateEnergyReport(deviceIds,
    responseForPastData,

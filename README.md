@@ -1,8 +1,8 @@
-**timestream-processing**
+**timestream_processing**
 
 A package for parsing result of timestream query and also for generating energy report.
 
-**timestream-processing APIs**
+**timestream_processing APIs**
 
 1. _generateEnergyReport(deviceIds,
    responseForPastData,
@@ -31,7 +31,7 @@ A package for parsing result of timestream query and also for generating energy 
    **Example:**
 
    ```
-   const { keyValueTransformation } = require("timestream-processing");
+   const { keyValueTransformation } = require("timestream_processing");
 
    let response = ['{id=8910dh1937a73bf82,name=Raj Malhotra,age=25,Gender=M,time=2021-02-22 23:06:03.312000000}','{id=738hf3y837932h37r,name=Mehul Bhanushali,age=28,Gender=M,time=2021-02-22 23:07:03.312000000}'];
    let result = keyValueTransformation(response);
@@ -51,7 +51,7 @@ A package for parsing result of timestream query and also for generating energy 
    **Example:**
 
    ```
-   const { parseQueryResult } = require("timestream-processing");
+   const { parseQueryResult } = require("timestream_processing");
 
    let response =
    {
@@ -107,7 +107,7 @@ A package for parsing result of timestream query and also for generating energy 
    **Example:**
 
    ```
-   const { parseQueryResultWithProcessing } = require("timestream-processing");
+   const { parseQueryResultWithProcessing } = require("timestream_processing");
 
    let response =
    {
@@ -164,7 +164,7 @@ A package for parsing result of timestream query and also for generating energy 
    **Example**
 
    ```
-   const { getParsedValue } = require("timestream-processing");
+   const { getParsedValue } = require("timestream_processing");
    let obj = {
        'measure_value::double': '249.45'
        dataType: 'FLOAT'

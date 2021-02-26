@@ -1,5 +1,5 @@
 {
-  "name": "timestream-processing",
+  "name": "timestream_processing",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,15 +8,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/code-business/timestream-processing.git"
+    "url": "git+https://github.com/code-business/timestream_processing.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/code-business/timestream-processing/issues"
+    "url": "https://github.com/code-business/timestream_processing/issues"
   },
-  "homepage": "https://github.com/code-business/timestream-processing#readme",
+  "homepage": "https://github.com/code-business/timestream_processing#readme",
   "dependencies": {
     "aws-sdk": "^2.784.0",
     "lodash": "^4.17.21",

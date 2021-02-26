@@ -1,6 +1,28 @@
 const _ = require("lodash");
 const moment = require("moment");
 
+const group_by_time = (response, deviceDictionary) => {
+  response = _.chain(response)
+    .groupBy("time")
+    .map((v, i) => {
+      return {
+        time: i,
+        ...v.reduce((acc, current) => {
+          acc[
+            `${deviceDictionary[current.deviceId].name}-${current.measure_name}`
+          ] = getParsedValue(
+            current["measure_value::double"],
+            current["dataType"]
+          );
+          return acc;
+        }, {}),
+      };
+    })
+    .value();
+
+  return response;
+};
+
 const generateEnergyReport = async (
   deviceIds,
   responseForPastData,
@@ -274,4 +296,5 @@ module.exports = {
   parseQueryResultWithProcessing,
   parseQueryResult,
   getParsedValue,
+  groupByTime: group_by_time,
 };

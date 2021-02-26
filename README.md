@@ -160,3 +160,19 @@ A package for parsing result of timestream query and also for generating energy 
 
    - value: value of parameter
    - dataType: data type of parameter
+
+   **Example**
+
+   ```
+   const { getParsedValue } = require("timestream-processing");
+   let obj = {
+       'measure_value::double': '249.45'
+       dataType: 'FLOAT'
+   };
+   let result = getParsedValue(obj['measure_value::double'],obj.dataType);
+   console.log("result = ",result);
+   ```
+
+   **Output**
+
+   result = 249.45

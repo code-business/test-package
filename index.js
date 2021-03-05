@@ -1,12 +1,21 @@
 const _ = require("lodash");
 const moment = require("moment");
 
-const group_by_time = (response, deviceDictionary) => {
+/**
+ * Groups array of objects by a grouping parameter and converts key to the form "devicename-parametername"
+ * @param {object[]} response - timestream response as array of objects
+ * @param {object} deviceDictionary - object with device names grouped by device ids
+ * @param {string} groupBy - grouping parameter(any key from response)
+ * @returns {object} object grouped by grouping parameter and with key names as "devicename-parametername"
+ */
+const group_by_key = (response, deviceDictionary, groupBy) => {
   response = _.chain(response)
-    .groupBy("time")
+    .groupBy(groupBy)
     .map((v, i) => {
-      return {
-        time: i,
+      let obj = {};
+      obj[groupBy] = i;
+      obj = {
+        ...obj,
         ...v.reduce((acc, current) => {
           acc[
             `${deviceDictionary[current.deviceId].name}-${current.measure_name}`
@@ -17,12 +26,22 @@ const group_by_time = (response, deviceDictionary) => {
           return acc;
         }, {}),
       };
+      return obj;
     })
     .value();
 
   return response;
 };
 
+/**
+ * Computes energy consumption of devices grouped by grouping parameter
+ * @param {string[]} deviceIds - array of device ids
+ * @param {object[]} responseForPastData - timestream response of past data as object with deviceIds as keys.
+ * @param {object[]} main_response - timestream response of current duration as array of objects
+ * @param {object} deviceDictionary - object with device names grouped by device ids
+ * @param {string} groupBy - grouping parameter
+ * @returns {object[]} array of objects with each object consisting of time and energy consumed per device parameter
+ */
 const generateEnergyReport = async (
   deviceIds,
   responseForPastData,
@@ -167,6 +186,11 @@ const keyValueTransformation = (response) => {
   return response;
 };
 
+/**
+ * Parses result of timestream read query and converts it into key value pairs of column name and row value
+ * @param {object} response - timestream read response as object
+ * @returns {object[]} array of objects with each object corresponding to a row
+ */
 const parseQueryResult = (response) => {
   let result = [];
   result = response.Rows.map((row) => {
@@ -182,13 +206,20 @@ const parseQueryResult = (response) => {
   return result;
 };
 
+/**
+ * Parses result of timestream read query based on column type and converts it into key value pairs of column name and row value
+ * @param {object} response - timestream read response as object
+ * @returns {object[]} array of objects with each object corresponding to a row
+ */
 const parseQueryResultWithProcessing = (response) => {
   const columnInfo = response.ColumnInfo;
   const rows = response.Rows;
 
-  const data = rows.map((row) => {
+  let data = rows.map((row) => {
     return parseRow(columnInfo, row);
   });
+
+  data = keyValueTransformation(data);
 
   return data;
 };
@@ -260,10 +291,21 @@ const parseArray = (arrayColumnInfo, arrayValues) => {
   return `[${arrayOutput.join(", ")}]`;
 };
 
+/**
+ * Converts string value from timestream column to its corresponding data type
+ * @param {string} value - value as a string
+ * @param {string} type - name of data type of value as a string
+ * @returns {*} value converted to a particular type
+ */
 const getParsedValue = (value, type) => {
   let parsedValue;
   switch (type) {
     case "BOOL":
+      if (value === "true") {
+        parsedValue = true;
+      } else if (value === "false") {
+        parsedValue = false;
+      }
     case "FLOAT":
       parsedValue = parseFloat(value);
       break;
@@ -292,9 +334,8 @@ const getParsedValue = (value, type) => {
 
 module.exports = {
   generateEnergyReport,
-  keyValueTransformation,
   parseQueryResultWithProcessing,
   parseQueryResult,
   getParsedValue,
-  groupByTime: group_by_time,
+  groupByKey: group_by_key,
 };

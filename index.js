@@ -173,7 +173,7 @@ const keyValueTransformation = (response) => {
         if (keyValue[0].trim() == "time") {
           // to group by using time
           acc[keyValue[0].trim()] = moment(keyValue[1].trim())
-            .utcOffset("+0530")
+            .add(5.5, "hours")
             .format("YYYY-MM-DD HH:mm:ss");
         } else {
           acc[keyValue[0].trim()] = keyValue[1].trim();

@@ -1,8 +1,0 @@
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "timestream_processing": ["node_modules/timestream_processing"]
-    }
-  }
-}

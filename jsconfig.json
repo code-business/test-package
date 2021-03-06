@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "timestream_processing": ["index.js"]
+      "timestream_processing": ["node_modules/timestream_processing"]
     }
   }
 }

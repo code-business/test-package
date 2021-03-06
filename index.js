@@ -332,6 +332,9 @@ const getParsedValue = (value, type) => {
   return parsedValue;
 };
 
+/**
+ *@module timestream_processing
+ */
 module.exports = {
   generateEnergyReport,
   parseQueryResultWithProcessing,

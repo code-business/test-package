@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "timestream_processing": ["index.js"]
+    }
+  }
+}

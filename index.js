@@ -307,6 +307,8 @@ const getParsedValue = (value, type) => {
         parsedValue = false;
       }
     case "FLOAT":
+    case "REAL":
+    case "LREAL":
       parsedValue = parseFloat(value);
       break;
     case "DATE":
@@ -325,9 +327,15 @@ const getParsedValue = (value, type) => {
     case "INT":
     case "UINT":
     case "USINT":
-    case "UDINT_R":
+    case "UDINT":
+    case "SINT":
+    case "DINT":
+    case "WORD":
+    case "DWORD":
       parsedValue = parseInt(value);
       break;
+    default:
+      parsedValue = 0;
   }
   return parsedValue;
 };

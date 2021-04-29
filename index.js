@@ -8,7 +8,7 @@ const moment = require("moment");
  * @param {string} groupBy - grouping parameter(any key from response)
  * @returns {object} object grouped by grouping parameter and with key names as "devicename-parametername"
  */
-const group_by_key = (response, deviceDictionary, groupBy) => {
+ const group_by_key = (response, deviceDictionary, groupBy,length) => {
   response = _.chain(response)
     .groupBy(groupBy)
     .map((v, i) => {
@@ -17,12 +17,23 @@ const group_by_key = (response, deviceDictionary, groupBy) => {
       obj = {
         ...obj,
         ...v.reduce((acc, current) => {
+          if (length ===1){
+            acc[
+              `${current.measure_name}`
+            ] = getParsedValue(
+              current["measure_value::double"],
+              current["dataType"]
+            );
+
+          }
+          else{          
           acc[
             `${deviceDictionary[current.deviceId].name}-${current.measure_name}`
           ] = getParsedValue(
             current["measure_value::double"],
             current["dataType"]
           );
+          }
           return acc;
         }, {}),
       };

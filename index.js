@@ -17,7 +17,7 @@ const moment = require("moment");
       obj = {
         ...obj,
         ...v.reduce((acc, current) => {
-          if (length ===1){
+          if (Object.keys(deviceDictionary).length ===1){
             acc[
               `${current.measure_name}`
             ] = getParsedValue(

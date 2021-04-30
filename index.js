@@ -87,7 +87,8 @@ const generateEnergyReport = async (
         //check presence of device id or device name in current key
         if (
           measureNameKey.indexOf(deviceId) !== -1 ||
-          measureNameKey.indexOf(deviceName_string) !== -1
+          measureNameKey.indexOf(deviceName_string) !== -1 ||
+          Object.keys(deviceDictionary).length === 1
         ) {
           const max = _.get(groupData, `${measureNameKey}-max`) * 1;
           let min = 0;
@@ -129,7 +130,25 @@ const groupByTime = (response, deviceDictionary, groupBy) => {
         time: moment(i).format("yyyy-MM-DD HH:mm:ss"),
         ...v.reduce((acc, current) => {
           const deviceName = deviceDictionary[current.deviceId].name;
+          if (Object.keys(deviceDictionary).length ===1){
+          
+            if (deviceName) {
+              acc[`${current.measure_name}-min`] = current.min * 1;
+              acc[`${current.measure_name}-max`] = current.max * 1;
+              // initialise now and will be calculated later
+              acc[`${current.measure_name}`] = 0;
+            } else {
+              acc[`${current.measure_name}-min`] =
+                current.min * 1;
+              acc[`${current.measure_name}-max`] =
+                current.max * 1;
+              // initialise now and will be calculated later
+              acc[`${current.measure_name}`] = 0;
+            }
+          }
+          else{
 
+          
           if (deviceName) {
             acc[`${deviceName}-${current.measure_name}-min`] = current.min * 1;
             acc[`${deviceName}-${current.measure_name}-max`] = current.max * 1;
@@ -143,6 +162,7 @@ const groupByTime = (response, deviceDictionary, groupBy) => {
             // initialise now and will be calculated later
             acc[`${current.deviceId}-${current.measure_name}`] = 0;
           }
+        }
           return acc;
         }, {}),
       };
